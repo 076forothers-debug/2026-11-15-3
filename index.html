@@ -350,11 +350,10 @@
 <!-- ============================================
      BGM 預留區：把你的音樂檔放到同一個資料夾，
      再把下面 src 換成你的檔名即可（例如 "bgm.m4a"）。
-     使用者需先點一下右上角的音符按鈕才會開始播放，
-     這是瀏覽器的自動播放限制，無法用程式繞過。
+     這裡已改成自動播放，按鈕仍保留用來暫停/繼續。
      ============================================ -->
-<audio id="bgm" src="bgm.m4a" loop preload="auto"></audio>
-<button id="music-toggle" class="music-toggle" title="播放音樂" aria-label="播放音樂">♪</button>
+<audio id="bgm" src="bgm.m4a" autoplay loop preload="auto" playsinline></audio>
+<button id="music-toggle" class="music-toggle" title="播放音樂" aria-label="播放音樂">♫</button>
 
 <main>
 
@@ -640,6 +639,12 @@ flyStar.addEventListener('click', function(){
 /* ================= BGM 播放/暫停 ================= */
 const bgm = document.getElementById('bgm');
 const musicToggle = document.getElementById('music-toggle');
+
+bgm.volume = 0.5;
+
+bgm.play().catch(() => {
+  console.warn('BGM 自動播放被瀏覽器限制，請點擊音符按鈕後再播放');
+});
 
 musicToggle.addEventListener('click', () => {
   if (bgm.paused){
