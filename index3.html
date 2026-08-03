@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三關 · 尋星</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#191531;
+    --bg-mid:#241d42;
+    --gold:#f5d599;
+    --pink:#f4c6d3;
+    --cream:#f7f0e6;
+    --muted:#c9b8d6;
+    --danger:#e69a9a;
+    --glass:rgba(247,240,230,0.06);
+    --glass-border:rgba(245,213,153,0.28);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(circle at 50% 20%, var(--bg-mid), var(--bg-deep) 70%);
+    color:var(--cream);
+    font-family:'Noto Sans TC', sans-serif;
+    overflow-x:hidden;
+  }
+
+  canvas#petals{
+    position:fixed; inset:0; width:100%; height:100%;
+    z-index:0; pointer-events:none;
+  }
+
+  main{
+    position:relative; z-index:1;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:6vh 20px;
+  }
+
+  .screen{
+    display:none;
+    width:100%; max-width:520px;
+    text-align:center;
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:28px;
+    padding:52px 34px 44px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    animation: fadeIn .6s ease;
+  }
+  .screen.active{ display:block; }
+
+  @keyframes fadeIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .eyebrow{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    letter-spacing:0.28em;
+    font-size:0.82rem;
+    color:var(--gold);
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+
+  h1{
+    font-family:'Noto Serif TC', serif;
+    font-weight:700;
+    font-size:2rem;
+    margin:0 0 18px;
+    color:var(--cream);
+    letter-spacing:0.04em;
+  }
+
+  .copy{
+    font-family:'Noto Sans TC', sans-serif;
+    font-weight:300;
+    font-size:1rem;
+    line-height:1.9;
+    color:var(--muted);
+    margin:0 0 30px;
+  }
+
+  /* ---------- 按鈕 ---------- */
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    background:linear-gradient(180deg, var(--gold), #e0b877);
+    color:#2a1f10;
+    font-family:'Noto Sans TC', sans-serif;
+    font-weight:500;
+    font-size:1rem;
+    padding:14px 34px;
+    border-radius:999px;
+    box-shadow:0 12px 26px rgba(245,213,153,0.25);
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 16px 32px rgba(245,213,153,0.35); }
+  .btn:active{ transform:translateY(0); }
+
+  /* ---------- 尋寶圖畫面 ---------- */
+  .map-frame{
+    width:100%;
+    border-radius:16px;
+    overflow:hidden;
+    border:1px solid var(--glass-border);
+    margin-bottom:26px;
+    background:#fdfaf3;
+    cursor:zoom-in;
+  }
+  .map-frame img{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+
+  .lightbox{
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(10, 7, 24, 0.82);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .lightbox.show{ display: flex; }
+  .lightbox img{
+    max-width: min(92vw, 760px);
+    max-height: 92vh;
+    width: auto;
+    height: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(245,213,153,0.5);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.4);
+    background: #fdfaf3;
+  }
+
+  /* ---------- 解謎進度 ---------- */
+  .progress-dots{
+    display:flex; justify-content:center; gap:9px;
+    margin-bottom:30px;
+    flex-wrap:wrap;
+  }
+  .progress-dots span{
+    width:9px; height:9px; border-radius:50%;
+    background:rgba(245,213,153,0.18);
+    border:1px solid rgba(245,213,153,0.35);
+    transition:all .3s ease;
+  }
+  .progress-dots span.filled{
+    background:var(--gold);
+    box-shadow:0 0 10px rgba(245,213,153,0.7);
+  }
+
+  .quiz-label{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    color:var(--gold);
+    font-size:0.9rem;
+    letter-spacing:0.14em;
+    margin-bottom:10px;
+  }
+
+  .quiz-question{
+    font-family:'Noto Serif TC', serif;
+    font-weight:600;
+    font-size:1.2rem;
+    line-height:1.8;
+    margin:0 0 28px;
+    color:var(--cream);
+    white-space:pre-line;
+  }
+
+  .quiz-input{
+    width:100%;
+    padding:14px 18px;
+    border-radius:14px;
+    border:1px solid var(--glass-border);
+    background:rgba(247,240,230,0.07);
+    color:var(--cream);
+    font-size:1rem;
+    font-family:'Noto Sans TC', sans-serif;
+    text-align:center;
+    outline:none;
+    margin-bottom:14px;
+    transition:border-color .2s ease, background .2s ease;
+  }
+  .quiz-input::placeholder{ color:rgba(201,184,214,0.5); }
+  .quiz-input:focus{ border-color:var(--gold); background:rgba(247,240,230,0.11); }
+  .quiz-input.shake{ animation:shake .4s ease; border-color:var(--danger); }
+
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-8px); }
+    40%{ transform:translateX(8px); }
+    60%{ transform:translateX(-6px); }
+    80%{ transform:translateX(6px); }
+  }
+
+  .quiz-feedback{
+    min-height:22px;
+    font-size:0.88rem;
+    color:var(--danger);
+    margin-bottom:18px;
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .quiz-feedback.show{ opacity:1; }
+
+  .quiz-feedback.correct{ color:var(--gold); }
+
+  /* ---------- 星星收集畫面（沿用原本設計）---------- */
+  .fly-star{
+    appearance:none; border:none; cursor:pointer;
+    background:transparent;
+    font-size:3.4rem;
+    line-height:1;
+    color:var(--gold);
+    text-shadow:0 0 18px rgba(245,213,153,0.65);
+    margin:6px auto 30px;
+    display:block;
+    position:relative;
+    transition:transform .25s ease, filter .25s ease;
+    animation:twinkle 2.6s ease-in-out infinite;
+  }
+  .fly-star:hover{ transform:scale(1.08); }
+  .fly-star:active{ transform:scale(0.94); }
+  .fly-star:disabled{ cursor:default; }
+
+  @keyframes twinkle{
+    0%,100%{ filter:drop-shadow(0 0 6px rgba(245,213,153,0.5)); }
+    50%{ filter:drop-shadow(0 0 16px rgba(245,213,153,0.9)); }
+  }
+
+  .fly-star.flying{
+    animation:none;
+    transform: translateY(-260px) scale(0.25);
+    opacity:0;
+    transition: transform .7s cubic-bezier(.3,.7,.4,1), opacity .7s ease;
+  }
+
+  .jar{
+    position:relative;
+    width:150px; height:170px;
+    margin:0 auto 30px;
+  }
+  .jar-lid{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:70px; height:16px;
+    background:linear-gradient(180deg, #d8a5a5, #b97e83);
+    border-radius:6px;
+    box-shadow:0 3px 6px rgba(0,0,0,0.35);
+  }
+  .jar-neck{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:52px; height:16px;
+    background:rgba(247,240,230,0.14);
+    border:1px solid var(--glass-border);
+    border-top:none;
+    border-radius:0 0 4px 4px;
+  }
+  .jar-body{
+    position:absolute; top:28px; left:50%; transform:translateX(-50%);
+    width:134px; height:142px;
+    background:rgba(247,240,230,0.08);
+    border:1px solid var(--glass-border);
+    border-radius:18px 18px 34px 34px;
+    overflow:hidden;
+  }
+  .jar-body::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(120deg, rgba(255,255,255,0.10), transparent 40%);
+    pointer-events:none;
+  }
+  .mini-star{
+    position:absolute;
+    color:var(--gold);
+    font-size:1.15rem;
+    text-shadow:0 0 8px rgba(245,213,153,0.8);
+    animation:settle .5s ease forwards;
+  }
+  @keyframes settle{
+    from{ transform:translateY(-40px) scale(0.4); opacity:0; }
+    to{ transform:translateY(0) scale(1); opacity:1; }
+  }
+
+  .coupon{
+    opacity:0; transform:translateY(10px);
+    max-height:0; overflow:hidden;
+    transition:opacity .5s ease, transform .5s ease, max-height .5s ease;
+    border-top:1px solid var(--glass-border);
+    padding-top:0;
+  }
+  .coupon.show{
+    opacity:1; transform:translateY(0);
+    max-height:200px;
+    padding-top:22px;
+  }
+  .coupon .title{
+    font-family:'Noto Serif TC', serif;
+    font-weight:600;
+    color:var(--gold);
+    font-size:1.1rem;
+    margin-bottom:8px;
+  }
+
+  /* ---------- 音樂播放器（自備 BGM 用） ---------- */
+  .music-toggle{
+    position:fixed;
+    top:18px; right:18px;
+    z-index:2;
+    width:46px; height:46px;
+    border-radius:50%;
+    border:1px solid var(--glass-border);
+    background:rgba(247,240,230,0.08);
+    backdrop-filter:blur(4px);
+    color:var(--gold);
+    font-size:1.15rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:transform .2s ease, background .2s ease;
+  }
+  .music-toggle:hover{ transform:scale(1.06); background:rgba(247,240,230,0.14); }
+  .music-toggle.playing{ animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 0 0 rgba(245,213,153,0.4); }
+    50%{ box-shadow:0 0 14px rgba(245,213,153,0.55); }
+  }
+
+  @media (max-width:480px){
+    .screen{ padding:44px 22px 36px; }
+    h1{ font-size:1.6rem; }
+    .quiz-question{ font-size:1.05rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="petals"></canvas>
+
+<!-- ============================================
+     BGM 預留區：把你的音樂檔放到同一個資料夾，
+     再把下面 src 換成你的檔名即可（例如 "bgm.mp3"）。
+     使用者需先點一下右上角的音符按鈕才會開始播放，
+     這是瀏覽器的自動播放限制，無法用程式繞過。
+     ============================================ -->
+<audio id="bgm" src="your-music.mp3" loop preload="auto"></audio>
+<button id="music-toggle" class="music-toggle" title="播放音樂" aria-label="播放音樂">♪</button>
+
+<main>
+
+  <!-- ========== 畫面 1：尋寶圖介紹 ========== -->
+  <section class="screen active" id="screen-map">
+    <div class="eyebrow">第三關 · 尋寶開始</div>
+    <h1>藏寶圖</h1>
+    <p class="copy">
+      這張尋寶圖上的特殊標記有種奇怪的規律，<br>
+      請按照你所發現的規律尋找寶藏。<br>
+    </p>
+    <div class="map-frame" id="map-frame">
+      <img src="treasure-map.png" alt="尋寶圖">
+    </div>
+    <button class="btn" id="start-quiz">開始尋寶</button>
+  </section>
+
+  <div class="lightbox" id="lightbox">
+    <img src="treasure-map.png" alt="放大後的藏寶圖">
+  </div>
+
+  <!-- ========== 畫面 2：七題依序解謎 ========== -->
+  <section class="screen" id="screen-quiz">
+    <div class="eyebrow" id="quiz-eyebrow">尋星 · 1 / 7 </div>
+    <div class="progress-dots" id="quiz-dots"></div>
+    <div class="quiz-question" id="quiz-question"></div>
+    <input type="text" class="quiz-input" id="quiz-input" placeholder="輸入答案" autocomplete="off">
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <button class="btn" id="quiz-submit">確認答案</button>
+  </section>
+
+  <!-- ========== 畫面 3：七題全過，終極寶藏提示 ========== -->
+  <section class="screen" id="screen-final-hint">
+    <div class="eyebrow">恭喜您已拾取所有秘寶</div>
+    <h1>古老的王留下了一串古老文字，將其銘記心中或許會獲得意外之喜</h1>
+    <p class="copy" id="final-hint-text">
+      「 XdRe 」
+    </p>
+    <button class="btn" id="to-star">繼續</button>
+  </section>
+
+  <!-- ========== 畫面 4：收集星星 ========== -->
+  <section class="screen" id="screen-star">
+    <div class="eyebrow">最後一關</div>
+    <h1>收集星星</h1>
+    <p class="copy">按一下星星<br>這是六顆裡的第三顆</p>
+
+    <div class="progress-dots" id="star-progress-dots">
+      <span class="filled"></span>
+      <span class="filled"></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+
+    <button id="fly-star" class="fly-star">★</button>
+
+    <div class="jar">
+      <div class="jar-lid"></div>
+      <div class="jar-neck"></div>
+      <div class="jar-body" id="jar-body"></div>
+    </div>
+
+    <div class="coupon" id="coupon">
+      <div class="title">★ 已收集</div>
+      <p class="copy" style="font-size:0.95rem; line-height:1.8; margin:0;">
+        你找到了 <span id="coupon-count">3</span> 顆星星
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ================= 背景：夜空星光 + 飄落花瓣 ================= */
+const canvas = document.getElementById('petals');
+const ctx = canvas.getContext('2d');
+let w, h;
+function resize(){ w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+const stars = Array.from({length: 90}, () => ({
+  x: Math.random(), y: Math.random(), r: Math.random()*1.4+0.3,
+  phase: Math.random()*Math.PI*2
+}));
+
+const petals = Array.from({length: 22}, () => ({
+  x: Math.random()*1, y: Math.random()*-1,
+  size: Math.random()*8+6, speed: Math.random()*0.4+0.25,
+  drift: Math.random()*0.6-0.3, rot: Math.random()*360, rotSpeed: Math.random()*0.6-0.3
+}));
+
+let t = 0;
+function draw(){
+  t += 0.02;
+  ctx.clearRect(0,0,w,h);
+
+  stars.forEach(s => {
+    const alpha = 0.4 + 0.5*Math.sin(t + s.phase);
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(245,213,153,${Math.max(0,alpha)*0.7})`;
+    ctx.arc(s.x*w, s.y*h, s.r, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  petals.forEach(p => {
+    p.y += p.speed*0.003;
+    p.x += p.drift*0.0015;
+    p.rot += p.rotSpeed;
+    if (p.y > 1.05) { p.y = -0.05; p.x = Math.random(); }
+    const px = p.x*w, py = p.y*h;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(p.rot*Math.PI/180);
+    ctx.fillStyle = 'rgba(244,198,211,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(0,0,p.size,p.size*0.6,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* ================= 畫面切換小工具 ================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+const mapFrame = document.getElementById('map-frame');
+const lightbox = document.getElementById('lightbox');
+
+mapFrame.addEventListener('click', () => {
+  lightbox.classList.add('show');
+});
+
+lightbox.addEventListener('click', () => {
+  lightbox.classList.remove('show');
+});
+
+/* =========================================================
+   尋寶解謎題目設定區 —— 請把下面 7 題換成你自己房間裡的謎題與答案
+   answers 陣列可以放多個可接受的答案（例如同義字、不同大小寫），
+   系統會自動去除頭尾空白、忽略英文大小寫來比對。
+   ========================================================= */
+const puzzles = [
+  { question: "xxxx/xx/xx", answers: ["2025/11/29"] },
+  { question: "林芯宥上大學後才發現她最喜歡的是什麼顏色？", answers: ["綠色"] },
+  { question: "都大寫哦", answers: ["HELP"] },
+  { question: " ", answers: ["56"] },
+  { question: "填數字即可", answers: ["20"] },
+  { question: "填數字即可", answers: ["353"] },
+  { question: "填數字即可", answers: ["9"] },
+];
+
+let quizIndex = 0;
+
+const quizDots = document.getElementById('quiz-dots');
+puzzles.forEach(() => {
+  const dot = document.createElement('span');
+  quizDots.appendChild(dot);
+});
+
+const quizEyebrow = document.getElementById('quiz-eyebrow');
+const quizQuestion = document.getElementById('quiz-question');
+const quizInput = document.getElementById('quiz-input');
+const quizFeedback = document.getElementById('quiz-feedback');
+const quizSubmit = document.getElementById('quiz-submit');
+
+function renderQuiz(){
+  const p = puzzles[quizIndex];
+  quizEyebrow.textContent = `尋寶 · 第 ${quizIndex+1} / ${puzzles.length} 個線索`;
+  quizQuestion.textContent = p.question;
+  quizInput.value = '';
+  quizFeedback.textContent = '';
+  quizFeedback.classList.remove('show','correct');
+  [...quizDots.children].forEach((dot, i) => {
+    dot.classList.toggle('filled', i < quizIndex);
+  });
+  quizInput.focus();
+}
+
+function normalize(str){
+  return str.trim().toLowerCase();
+}
+
+function checkAnswer(){
+  const p = puzzles[quizIndex];
+  const val = normalize(quizInput.value);
+  if (!val) return;
+
+  const isCorrect = p.answers.some(a => normalize(a) === val);
+
+  if (isCorrect){
+    quizFeedback.textContent = '正確！尋找下個秘寶';
+    quizFeedback.classList.add('show','correct');
+    quizInput.disabled = true;
+    quizSubmit.disabled = true;
+
+    setTimeout(() => {
+      quizIndex += 1;
+      quizInput.disabled = false;
+      quizSubmit.disabled = false;
+
+      if (quizIndex >= puzzles.length){
+        [...quizDots.children].forEach(dot => dot.classList.add('filled'));
+        showScreen('screen-final-hint');
+      } else {
+        renderQuiz();
+      }
+    }, 700);
+  } else {
+    quizFeedback.textContent = '再想想看，答案不太對';
+    quizFeedback.classList.remove('correct');
+    quizFeedback.classList.add('show');
+    quizInput.classList.remove('shake');
+    void quizInput.offsetWidth; // 重新觸發動畫
+    quizInput.classList.add('shake');
+  }
+}
+
+quizSubmit.addEventListener('click', checkAnswer);
+quizInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') checkAnswer();
+});
+
+document.getElementById('start-quiz').addEventListener('click', () => {
+  renderQuiz();
+  showScreen('screen-quiz');
+});
+
+document.getElementById('to-star').addEventListener('click', () => {
+  showScreen('screen-star');
+});
+
+/* ================= 星星收集邏輯 ================= */
+const flyStar = document.getElementById('fly-star');
+const jarBody = document.getElementById('jar-body');
+const coupon = document.getElementById('coupon');
+const couponCount = document.getElementById('coupon-count');
+const starDots = document.querySelectorAll('#star-progress-dots span');
+
+const ALREADY_COLLECTED = 2;   // 前兩關已收集的星星數
+const TARGET_THIS_LEVEL = 3;   // 這一關按完後應該達到的總數
+let collected = ALREADY_COLLECTED;
+
+function placeMiniStar(){
+  const mini = document.createElement('span');
+  mini.className = 'mini-star';
+  mini.textContent = '★';
+  mini.style.left = (12 + Math.random()*110) + 'px';
+  mini.style.bottom = (10 + Math.random()*10) + 'px';
+  jarBody.appendChild(mini);
+}
+for (let i=0; i<ALREADY_COLLECTED; i++){ placeMiniStar(); }
+
+flyStar.addEventListener('click', function(){
+  if (collected >= TARGET_THIS_LEVEL || flyStar.classList.contains('flying')) return;
+  flyStar.classList.add('flying');
+
+  setTimeout(() => {
+    collected += 1;
+    placeMiniStar();
+
+    starDots[collected-1].classList.add('filled');
+
+    flyStar.classList.remove('flying');
+    flyStar.disabled = true;
+    flyStar.style.visibility = 'hidden';
+
+    couponCount.textContent = collected;
+    coupon.classList.add('show');
+
+    // 這裡可以接下一關的跳轉，例如：
+    // setTimeout(() => { window.location.href = 'level4.html'; }, 1800);
+  }, 700);
+});
+
+/* ================= BGM 播放/暫停 ================= */
+const bgm = document.getElementById('bgm');
+const musicToggle = document.getElementById('music-toggle');
+
+musicToggle.addEventListener('click', () => {
+  if (bgm.paused){
+    bgm.play().catch(() => {
+      console.warn('BGM 播放失敗，請確認 audio 標籤的 src 是否正確');
+    });
+    musicToggle.textContent = '♫';
+    musicToggle.classList.add('playing');
+  } else {
+    bgm.pause();
+    musicToggle.textContent = '♪';
+    musicToggle.classList.remove('playing');
+  }
+});
+</script>
+</body>
+</html>
